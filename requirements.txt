@@ -1,4 +1,6 @@
 flask
+flask-mail
+flask-session
 supabase
 yfinance
 python-dotenv

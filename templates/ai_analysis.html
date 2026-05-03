@@ -308,63 +308,105 @@
         </header>
 
         {% if has_stocks %}
-        <div class="metric-cards" id="metric-cards">
-            <div class="metric-card" id="risk-card">
-                <div class="metric-label">Risk</div>
-                <span class="metric-badge" id="risk-badge">—</span>
-            </div>
-            <div class="metric-card" id="div-card">
-                <div class="metric-label">Diversification</div>
-                <span class="metric-badge" id="div-badge">—</span>
-            </div>
-            <div class="metric-card" id="health-card">
-                <div class="metric-label">Health</div>
-                <span class="metric-badge" id="health-badge">—</span>
-            </div>
-        </div>
+        <!-- Placeholder cards shown before analysis -->
+        <div id="placeholderSection">
+            <div style="padding: 16px;">
+                <p style="color:#888; font-size:13px; margin-bottom:16px;">Click the button below to get AI powered insights about your portfolio</p>
 
-        <div class="card" id="summary-card">
-            <div class="card-title">Summary</div>
-            <div class="card-body" id="summary-text">—</div>
-        </div>
-
-        <div class="card" id="breakdown-card">
-            <div class="card-title">Portfolio Breakdown</div>
-            <div id="breakdown-body">
-                {% for s in stocks %}
-                <div class="breakdown-row">
-                    <div class="breakdown-label" title="{{ s.symbol }}">{{ s.symbol }}</div>
-                    <div class="breakdown-bar-wrap">
-                        <div class="breakdown-bar" style="width: {{ s.portfolio_pct }}%; background: hsl({{ loop.index0 * 45 + 200 }}, 70%, 55%);"></div>
+                <!-- Risk, Diversification, Health placeholder -->
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:16px;">
+                    <div style="background:#2a2a4a; border-radius:12px; padding:14px; text-align:center;">
+                        <div style="font-size:11px; color:#888; margin-bottom:8px;">RISK LEVEL</div>
+                        <div style="background:#444; border-radius:6px; padding:6px 10px; color:#888; font-size:13px;">--</div>
                     </div>
-                    <div class="breakdown-pct">{{ s.portfolio_pct }}%</div>
+                    <div style="background:#2a2a4a; border-radius:12px; padding:14px; text-align:center;">
+                        <div style="font-size:11px; color:#888; margin-bottom:8px;">DIVERSIFICATION</div>
+                        <div style="background:#444; border-radius:6px; padding:6px 10px; color:#888; font-size:13px;">--</div>
+                    </div>
+                    <div style="background:#2a2a4a; border-radius:12px; padding:14px; text-align:center;">
+                        <div style="font-size:11px; color:#888; margin-bottom:8px;">HEALTH</div>
+                        <div style="background:#444; border-radius:6px; padding:6px 10px; color:#888; font-size:13px;">--</div>
+                    </div>
                 </div>
-                {% endfor %}
+
+                <!-- Portfolio breakdown placeholder -->
+                <div style="background:#2a2a4a; border-radius:12px; padding:16px; margin-bottom:16px;">
+                    <div style="font-size:13px; color:#888; margin-bottom:12px;">PORTFOLIO BREAKDOWN</div>
+                    <div style="color:#555; text-align:center; padding:20px; font-size:13px;">Analysis will appear here</div>
+                </div>
+
+                <!-- Suggestions placeholder -->
+                <div style="font-size:13px; color:#888; margin-bottom:10px;">AI SUGGESTIONS</div>
+                <div style="background:#2a2a4a; border-radius:12px; padding:16px; margin-bottom:10px; border-left:3px solid #333;">
+                    <div style="color:#555; font-size:13px;">Suggestion 1 will appear here</div>
+                </div>
+                <div style="background:#2a2a4a; border-radius:12px; padding:16px; margin-bottom:10px; border-left:3px solid #333;">
+                    <div style="color:#555; font-size:13px;">Suggestion 2 will appear here</div>
+                </div>
+                <div style="background:#2a2a4a; border-radius:12px; padding:16px; margin-bottom:16px; border-left:3px solid #333;">
+                    <div style="color:#555; font-size:13px;">Suggestion 3 will appear here</div>
+                </div>
             </div>
         </div>
 
-        <div class="card" id="performance-card">
-            <div class="card-title">Performance</div>
-            <div class="card-body">
-                <div>Best: <span class="highlight-green" id="best-stock">—</span></div>
-                <div style="margin-top: 0.3rem;">Worst: <span class="highlight-red" id="worst-stock">—</span></div>
+        <!-- Results section hidden initially -->
+        <div id="resultsSection" style="display:none; padding:16px;">
+            <div class="metric-cards" id="metric-cards">
+                <div class="metric-card" id="risk-card">
+                    <div class="metric-label">Risk</div>
+                    <span class="metric-badge" id="risk-badge">—</span>
+                </div>
+                <div class="metric-card" id="div-card">
+                    <div class="metric-label">Diversification</div>
+                    <span class="metric-badge" id="div-badge">—</span>
+                </div>
+                <div class="metric-card" id="health-card">
+                    <div class="metric-label">Health</div>
+                    <span class="metric-badge" id="health-badge">—</span>
+                </div>
             </div>
+
+            <div class="card" id="summary-card">
+                <div class="card-title">Summary</div>
+                <div class="card-body" id="summary-text">—</div>
+            </div>
+
+            <div class="card" id="breakdown-card">
+                <div class="card-title">Portfolio Breakdown</div>
+                <div id="breakdown-body">
+                    {% for s in stocks %}
+                    <div class="breakdown-row">
+                        <div class="breakdown-label" title="{{ s.symbol }}">{{ s.symbol }}</div>
+                        <div class="breakdown-bar-wrap">
+                            <div class="breakdown-bar" style="width: {{ s.portfolio_pct }}%; background: hsl({{ loop.index0 * 45 + 200 }}, 70%, 55%);"></div>
+                        </div>
+                        <div class="breakdown-pct">{{ s.portfolio_pct }}%</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card" id="performance-card">
+                <div class="card-title">Performance</div>
+                <div class="card-body">
+                    <div>Best: <span class="highlight-green" id="best-stock">—</span></div>
+                    <div style="margin-top: 0.3rem;">Worst: <span class="highlight-red" id="worst-stock">—</span></div>
+                </div>
+            </div>
+
+            <div id="suggestions-section" style="margin-bottom: 1rem;">
+                <div class="card-title" style="padding: 0 0 0.6rem;">AI Suggestions</div>
+                <div id="suggestions-body"></div>
+            </div>
+            <div id="analysis-extra"></div>
         </div>
 
-        <div class="card" id="sector-card">
-            <div class="card-title">Sector Analysis</div>
-            <div class="card-body" id="sector-text">—</div>
+        <!-- Loading spinner hidden initially -->
+        <div id="loadingSection" style="display:none; text-align:center; padding:40px;">
+            <div style="font-size:16px; color:#4a90e2; margin-bottom:10px;">🤖 Groq AI is analysing your portfolio...</div>
+            <div style="color:#888; font-size:13px;">This takes about 5 seconds</div>
         </div>
 
-        <div id="suggestions-section" style="margin-bottom: 1rem;">
-            <div class="card-title" style="padding: 0 0 0.6rem;">AI Suggestions</div>
-            <div id="suggestions-body"></div>
-        </div>
-
-        <div class="spinner-wrap" id="spinner">
-            <div class="spinner"></div>
-            <span>Gemini AI is analysing your portfolio...</span>
-        </div>
         <p class="err" id="err-msg"></p>
 
         <button type="button" class="btn-analyse" id="btn-analyse">Analyse my portfolio</button>
@@ -411,29 +453,50 @@
     <script>
         (function () {
             var btn = document.getElementById("btn-analyse");
-            var spinner = document.getElementById("spinner");
+            var placeholderSection = document.getElementById("placeholderSection");
+            var resultsSection = document.getElementById("resultsSection");
+            var loadingSection = document.getElementById("loadingSection");
             var errMsg = document.getElementById("err-msg");
 
-            function badgeClass(val) {
+            function riskBadgeClass(val) {
                 var v = (val || "").toUpperCase();
-                if (v === "HIGH" || v === "POOR") return "badge-red";
-                if (v === "MEDIUM" || v === "FAIR") return "badge-yellow";
-                if (v === "LOW" || v === "GOOD") return "badge-green";
+                if (v === "HIGH") return "badge-red";
+                if (v === "MEDIUM") return "badge-yellow";
+                if (v === "LOW") return "badge-green";
+                return "badge-yellow";
+            }
+
+            function healthDivBadgeClass(val) {
+                var v = (val || "").toUpperCase();
+                if (v === "GOOD") return "badge-green";
+                if (v === "FAIR") return "badge-yellow";
+                if (v === "POOR") return "badge-red";
                 return "badge-yellow";
             }
 
             function showCards() {
-                document.querySelectorAll(".metric-card, .card, .suggestion-card").forEach(function (el, i) {
+                document.querySelectorAll("#resultsSection .metric-card, #resultsSection .card, #resultsSection .suggestion-card").forEach(function (el, i) {
                     setTimeout(function () {
                         el.classList.add("show");
                     }, i * 80);
                 });
             }
 
+            function escHtml(s) {
+                var t = String(s == null ? "" : s);
+                return t
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;");
+            }
+
             btn.addEventListener("click", async function () {
                 btn.disabled = true;
-                spinner.classList.add("show");
                 errMsg.textContent = "";
+                placeholderSection.style.display = "none";
+                resultsSection.style.display = "none";
+                loadingSection.style.display = "block";
 
                 try {
                     var res = await fetch("/api/analyse-portfolio", {
@@ -442,46 +505,134 @@
                     });
                     var data = await res.json();
 
-                    spinner.classList.remove("show");
+                    loadingSection.style.display = "none";
                     btn.disabled = false;
 
                     if (!res.ok || data.error) {
                         errMsg.textContent = data.error || "Analysis failed";
+                        placeholderSection.style.display = "block";
                         return;
                     }
+
+                    resultsSection.style.display = "block";
 
                     var riskBadge = document.getElementById("risk-badge");
                     var divBadge = document.getElementById("div-badge");
                     var healthBadge = document.getElementById("health-badge");
 
                     riskBadge.textContent = data.risk_level || "—";
-                    riskBadge.className = "metric-badge " + badgeClass(data.risk_level);
+                    riskBadge.className = "metric-badge " + riskBadgeClass(data.risk_level);
                     divBadge.textContent = data.diversification || "—";
-                    divBadge.className = "metric-badge " + badgeClass(data.diversification);
+                    divBadge.className = "metric-badge " + healthDivBadgeClass(data.diversification);
                     healthBadge.textContent = data.overall_health || "—";
-                    healthBadge.className = "metric-badge " + badgeClass(data.overall_health);
+                    healthBadge.className = "metric-badge " + healthDivBadgeClass(data.overall_health);
 
                     document.getElementById("summary-text").textContent = data.summary || "—";
                     document.getElementById("best-stock").textContent = data.best_performing || "—";
                     document.getElementById("worst-stock").textContent = data.worst_performing || "—";
-                    document.getElementById("sector-text").textContent = data.sector_analysis || "—";
 
                     var sugBody = document.getElementById("suggestions-body");
                     sugBody.innerHTML = "";
                     var suggestions = data.suggestions || [];
-                    suggestions.forEach(function (s, i) {
+                    suggestions.forEach(function (s) {
                         var div = document.createElement("div");
                         div.className = "suggestion-card";
+                        div.style.borderLeft = "3px solid #4a90e2";
                         div.textContent = s;
                         sugBody.appendChild(div);
-                        setTimeout(function () { div.classList.add("show"); }, i * 100);
                     });
 
+                    var holdHTML = '<div style="margin-top:20px;"><div style="font-size:13px; color:#888; margin-bottom:10px;">HOLD RECOMMENDATIONS</div>';
+                    if (data.hold_recommendations) {
+                        data.hold_recommendations.forEach(function (rec) {
+                            var act = (rec.action || "").toUpperCase();
+                            var actionColor = act === "HOLD" ? "#f0a500" : act === "ADD MORE" ? "#00c853" : "#ff1744";
+                            holdHTML += '<div style="background:#2a2a4a; border-radius:12px; padding:16px; margin-bottom:12px;">' +
+                                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">' +
+                                '<div style="color:white; font-weight:500; font-size:15px;">' + escHtml(rec.symbol) + "</div>" +
+                                '<div style="background:' + actionColor + "22; color:" + actionColor + '; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:500;">' + escHtml(rec.action) + "</div></div>" +
+                                '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">' +
+                                '<div style="background:#1a1a2e; border-radius:8px; padding:8px;">' +
+                                '<div style="font-size:11px; color:#888;">HOLD UNTIL</div>' +
+                                '<div style="color:#4a90e2; font-size:13px; font-weight:500;">' + escHtml(rec.hold_until) + "</div></div>" +
+                                '<div style="background:#1a1a2e; border-radius:8px; padding:8px;">' +
+                                '<div style="font-size:11px; color:#888;">TARGET PRICE</div>' +
+                                '<div style="color:#00c853; font-size:13px; font-weight:500;">' + escHtml(rec.target_price) + "</div></div>" +
+                                '<div style="background:#1a1a2e; border-radius:8px; padding:8px;">' +
+                                '<div style="font-size:11px; color:#888;">STOP LOSS</div>' +
+                                '<div style="color:#ff1744; font-size:13px; font-weight:500;">' + escHtml(rec.stop_loss) + "</div></div></div>" +
+                                '<div style="color:#aaa; font-size:13px; line-height:1.5;">' + escHtml(rec.reasoning) + "</div></div>";
+                        });
+                    }
+                    holdHTML += "</div>";
+
+                    var newsHTML = '<div style="margin-top:20px;"><div style="font-size:13px; color:#888; margin-bottom:10px;">NEWS BASED OPPORTUNITIES</div>';
+                    if (data.news_based_opportunities) {
+                        data.news_based_opportunities.forEach(function (opp) {
+                            var impact = (opp.expected_impact || "").toUpperCase();
+                            var impactColor = impact === "POSITIVE" ? "#00c853" : "#ff1744";
+                            newsHTML += '<div style="background:#2a2a4a; border-radius:12px; padding:16px; margin-bottom:12px; border-left:3px solid ' + impactColor + ';">' +
+                                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+                                '<div style="color:white; font-weight:500; font-size:15px;">' + escHtml(opp.symbol) + "</div>" +
+                                '<div style="background:' + impactColor + "22; color:" + impactColor + '; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:500;">' +
+                                escHtml(opp.expected_impact) + " · " + escHtml(opp.potential_gain) + "</div></div>" +
+                                '<div style="background:#1a1a2e; border-radius:8px; padding:8px; margin-bottom:8px;">' +
+                                '<div style="font-size:11px; color:#888; margin-bottom:3px;">NEWS CATALYST</div>' +
+                                '<div style="color:#f0a500; font-size:13px;">' + escHtml(opp.news_catalyst) + "</div></div>" +
+                                '<div style="color:#aaa; font-size:13px; line-height:1.5; margin-bottom:6px;">' + escHtml(opp.reason) + "</div>" +
+                                '<div style="color:#888; font-size:12px;">⏱ Timeframe: ' + escHtml(opp.timeframe) + "</div></div>";
+                        });
+                    }
+                    newsHTML += "</div>";
+
+                    var watchHTML = '<div style="margin-top:20px;"><div style="font-size:13px; color:#888; margin-bottom:10px;">STOCKS TO WATCH</div>';
+                    if (data.stocks_to_watch) {
+                        data.stocks_to_watch.forEach(function (stock) {
+                            watchHTML += '<div style="background:#2a2a4a; border-radius:12px; padding:14px; margin-bottom:10px; border-left:3px solid #4a90e2;">' +
+                                '<div style="color:#4a90e2; font-weight:500; margin-bottom:4px;">' + escHtml(stock.symbol) + '</div>' +
+                                '<div style="color:#ccc; font-size:13px;">' + escHtml(stock.reason) + '</div></div>';
+                        });
+                    }
+                    watchHTML += "</div>";
+
+                    var sectorsHTML = '<div style="margin-top:20px;"><div style="font-size:13px; color:#888; margin-bottom:10px;">SECTORS TO EXPLORE</div>';
+                    if (data.sectors_to_explore) {
+                        data.sectors_to_explore.forEach(function (sector) {
+                            sectorsHTML += '<div style="background:#2a2a4a; border-radius:12px; padding:14px; margin-bottom:10px; border-left:3px solid #00c853;">' +
+                                '<div style="color:#00c853; font-weight:500; margin-bottom:4px;">' + escHtml(sector.sector) + '</div>' +
+                                '<div style="color:#ccc; font-size:13px;">' + escHtml(sector.reason) + '</div></div>';
+                        });
+                    }
+                    sectorsHTML += "</div>";
+
+                    var outlookHTML = "";
+                    if (data.market_outlook) {
+                        outlookHTML = '<div style="margin-top:20px;">' +
+                            '<div style="font-size:13px; color:#888; margin-bottom:10px;">MARKET OUTLOOK</div>' +
+                            '<div style="background:#2a2a4a; border-radius:12px; padding:16px; border-left:3px solid #f0a500;">' +
+                            '<div style="color:#ccc; font-size:14px; line-height:1.6;">' + escHtml(data.market_outlook) + "</div></div></div>";
+                    }
+
+                    var actionHTML = "";
+                    if (data.immediate_action) {
+                        actionHTML = '<div style="margin-top:20px;">' +
+                            '<div style="font-size:13px; color:#888; margin-bottom:10px;">IMMEDIATE ACTION</div>' +
+                            '<div style="background:#1a3a2a; border-radius:12px; padding:16px; border:1px solid #00c853;">' +
+                            '<div style="color:#00c853; font-size:14px; font-weight:500; line-height:1.6;">⚡ ' + escHtml(data.immediate_action) + "</div></div></div>";
+                    }
+
+                    document.getElementById("analysis-extra").innerHTML =
+                        holdHTML + newsHTML + watchHTML + sectorsHTML + outlookHTML + actionHTML;
+
+                    document.querySelectorAll("#resultsSection .metric-card, #resultsSection .card, #resultsSection .suggestion-card").forEach(function (el) {
+                        el.classList.remove("show");
+                    });
                     showCards();
                 } catch (e) {
-                    spinner.classList.remove("show");
+                    loadingSection.style.display = "none";
                     btn.disabled = false;
                     errMsg.textContent = e.message || "Network error";
+                    placeholderSection.style.display = "block";
                 }
             });
         })();

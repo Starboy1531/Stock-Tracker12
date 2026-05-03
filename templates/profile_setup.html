@@ -82,31 +82,6 @@
             box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
         }
 
-        .flash {
-            list-style: none;
-            margin: 0 0 1rem;
-            padding: 0;
-        }
-
-        .flash li {
-            padding: 0.65rem 0.85rem;
-            border-radius: 10px;
-            font-size: 0.875rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .flash li.error {
-            background: rgba(248, 113, 113, 0.15);
-            color: #fca5a5;
-            border: 1px solid rgba(248, 113, 113, 0.3);
-        }
-
-        .flash li.success {
-            background: rgba(34, 197, 94, 0.12);
-            color: #86efac;
-            border: 1px solid rgba(34, 197, 94, 0.25);
-        }
-
         .avatar-block {
             display: flex;
             flex-direction: column;
@@ -260,6 +235,10 @@
         .btn-submit:active {
             transform: scale(0.98);
         }
+
+        button[type="submit"]:hover {
+            background: #357abd !important;
+        }
     </style>
 </head>
 <body>
@@ -275,29 +254,15 @@
             <span></span>
         </header>
         <div class="card">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            <ul class="flash">
-                {% for category, message in messages %}
-                <li class="{{ category }}">{{ message }}</li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-            {% endwith %}
-
-            <form
-                action="{{ url_for('profile_setup') }}"
-                method="post"
-                id="profile-form"
-            >
+            <form id="profileForm" method="POST" action="/profile-setup">
                 <div class="avatar-block" style="text-align:center; margin-bottom:1.5rem;">
                     <input type="file" id="photoInput" name="photo" accept="image/*" style="display:none">
                     <input type="hidden" id="photoBase64" name="photo_base64">
 
                     <div id="avatarContainer" onclick="document.getElementById('photoInput').click()" style="cursor:pointer; display:inline-block;">
-                        <img id="avatarImg" src="{% if avatar_url %}{{ avatar_url }}{% endif %}" style="{% if avatar_url %}display:block;{% else %}display:none;{% endif %} width:100px; height:100px; border-radius:50%; object-fit:cover;">
-                        <div id="avatarInitials" style="{% if avatar_url %}display:none;{% else %}display:flex;{% endif %} width:100px; height:100px; border-radius:50%; background:#4a90e2; align-items:center; justify-content:center; font-size:32px; color:white; font-weight:500;">
-                            {{ session.get('name', initials|default('U', true))[:2].upper() }}
+                        <img id="avatarImg" src="{% if photo %}{{ photo }}{% endif %}" style="{% if photo %}display:block;{% else %}display:none;{% endif %} width:100px; height:100px; border-radius:50%; object-fit:cover;">
+                        <div id="avatarInitials" style="{% if photo %}display:none;{% else %}display:flex;{% endif %} width:100px; height:100px; border-radius:50%; background:#4a90e2; align-items:center; justify-content:center; font-size:32px; color:white; font-weight:500;">
+                            {{ initials|default('?', true) }}
                         </div>
                     </div>
 
@@ -312,7 +277,7 @@
                         type="text"
                         id="display_name"
                         name="display_name"
-                        value="{{ default_display_name }}"
+                        value="{{ name }}"
                         placeholder="How we should greet you"
                         required
                         autocomplete="name"
@@ -323,16 +288,16 @@
                     <label for="currency">Currency</label>
                     <select id="currency" name="currency" required>
                         {% for code, label in currencies %}
-                        <option value="{{ code }}"{% if code == default_currency %} selected{% endif %}>{{ label }}</option>
+                        <option value="{{ code }}"{% if code == currency %} selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
                 <div class="field">
-                    <label for="preferred_market">Preferred market</label>
-                    <select id="preferred_market" name="preferred_market" required>
+                    <label for="market">Preferred market</label>
+                    <select name="market" id="market" required>
                         {% for code, label in markets %}
-                        <option value="{{ code }}"{% if code == default_market %} selected{% endif %}>{{ label }}</option>
+                        <option value="{{ code }}"{% if code == market %} selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -341,35 +306,43 @@
                     <label for="timezone">Timezone</label>
                     <select id="timezone" name="timezone" required>
                         {% for tz, label in timezones %}
-                        <option value="{{ tz }}"{% if tz == default_timezone %} selected{% endif %}>{{ label }}</option>
+                        <option value="{{ tz }}"{% if tz == timezone %} selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <button type="submit" class="btn-submit">Save and continue</button>
+                <button type="submit" onclick="return submitForm()" style="width:100%; padding:16px; background:#4a90e2; color:white; border:none; border-radius:12px; font-size:16px; font-weight:500; cursor:pointer; margin-top:10px; transition: background 0.2s;">
+                    Save and continue
+                </button>
             </form>
         </div>
     </div>
     <script>
+        function submitForm() {
+            const form = document.getElementById('profileForm');
+            const photo = document.getElementById('photoBase64').value;
+            console.log('Submitting form, photo length:', photo.length);
+            return true;
+        }
         document.getElementById('photoInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
-            if (file.size > 2 * 1024 * 1024) {
-                alert('Photo must be under 2MB');
-                return;
-            }
-
             const reader = new FileReader();
             reader.onload = function(e) {
-                const base64 = e.target.result;
-                const avatarImg = document.getElementById('avatarImg');
-                const avatarInitials = document.getElementById('avatarInitials');
-
-                avatarImg.src = base64;
-                avatarImg.style.display = 'block';
-                avatarInitials.style.display = 'none';
-                document.getElementById('photoBase64').value = base64;
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 100;
+                    canvas.height = 100;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 100, 100);
+                    const compressed = canvas.toDataURL('image/jpeg', 0.5);
+                    document.getElementById('avatarImg').src = compressed;
+                    document.getElementById('avatarImg').style.display = 'block';
+                    document.getElementById('avatarInitials').style.display = 'none';
+                    document.getElementById('photoBase64').value = compressed;
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         });

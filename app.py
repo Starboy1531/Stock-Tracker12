@@ -2,6 +2,7 @@
 
 import json
 import os
+import tempfile
 import time
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
@@ -19,8 +20,13 @@ from flask import (
     session,
     url_for,
 )
+from flask_dance.contrib.google import google, make_google_blueprint
+from flask_dance.consumer import oauth_authorized
+from flask_session import Session
 from werkzeug.utils import secure_filename
 
+
+load_dotenv(override=True)
 
 _COMMON_US_TICKERS = frozenset(
     {
@@ -155,13 +161,34 @@ def _quote_price_fast_preferred(symbol: str) -> Optional[float]:
     return None
 
 
-load_dotenv()
-
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-change-me")
+app.config["SESSION_TYPE"] = "filesystem"
+app.config["SECRET_KEY"] = "stocktracker2026secretkey"
+app.config["SESSION_FILE_DIR"] = os.path.join(tempfile.gettempdir(), "stock_tracker_sessions")
+os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
+app.config["SESSION_PERMANENT"] = False
+app.config["MAIL_SERVER"] = "smtp-mail.outlook.com"
+app.config["MAIL_PORT"] = 587
+app.config["MAIL_USE_TLS"] = True
+app.config["MAIL_USE_SSL"] = False
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_USERNAME")
+Session(app)
+
+google_bp = make_google_blueprint(
+    client_id=os.getenv("GOOGLE_CLIENT_ID", ""),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET", ""),
+    scope=[
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/userinfo.email",
+    ],
+)
+app.register_blueprint(google_bp, url_prefix="/login")
 
 _AUTH_EXEMPT_ENDPOINTS = frozenset(
-    {"login", "signup", "logout", "static", "index"}
+    {"login", "signup", "logout", "static", "index", "google.login", "google.authorized", "create_profiles_table"}
 )
 
 
@@ -872,6 +899,40 @@ def api_create_table():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/create-profiles-table")
+def create_profiles_table():
+    """Create profiles table. Uses DATABASE_URL if set."""
+    db_url = (os.getenv("DATABASE_URL") or "").strip()
+    if not db_url:
+        return jsonify(
+            {
+                "ok": False,
+                "message": (
+                    "Set DATABASE_URL to your Supabase Postgres connection string "
+                    "(Dashboard → Project Settings → Database) and visit again, "
+                    "or run this SQL in the SQL Editor."
+                ),
+                "sql": ";\n".join(s.strip() for s in PROFILES_DDL_STATEMENTS if s.strip()),
+            }
+        ), 200
+    try:
+        import psycopg2
+    except ImportError:
+        return jsonify({"error": "Install psycopg2-binary (pip install psycopg2-binary)"}), 500
+    try:
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            for stmt in PROFILES_DDL_STATEMENTS:
+                s = stmt.strip()
+                if s:
+                    cur.execute(s)
+        conn.close()
+        return jsonify({"ok": True, "message": "profiles table and RLS policies created or updated"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/prices")
 def api_prices():
     if not session.get("access_token"):
@@ -1046,7 +1107,7 @@ def login():
         user if isinstance(user, dict) else {},
     )
 
-    flash("Signed in successfully.", "success")
+    session.pop("_flashes", None)
     return redirect(url_for("dashboard"))
 
 
@@ -1096,94 +1157,40 @@ def signup():
         )
 
     if session.get("user_id"):
-        flash("Account created.", "success")
+        session.pop("_flashes", None)
         return redirect(url_for("profile_setup"))
     flash("Account created. Confirm your email if required, then sign in.", "success")
     return redirect(url_for("login"))
 
 
-@app.route('/profile-setup', methods=['GET', 'POST'], strict_slashes=False)
+@app.route("/profile-setup", methods=["GET", "POST"], strict_slashes=False)
 def profile_setup():
-    if not session.get("access_token"):
-        flash("Please sign in.", "error")
-        return redirect(url_for("login"))
-
-    token = session["access_token"]
-    base = _supabase_base_url()
-    key = _supabase_anon_key()
-    if not base or not key:
-        flash("Server missing SUPABASE_URL or SUPABASE_KEY.", "error")
-        return redirect(url_for("login"))
+    if "user_id" not in session:
+        return redirect("/login")
 
     if request.method == "POST":
-        display_name = (request.form.get("display_name") or "").strip()
-        currency = (request.form.get("currency") or "INR").strip()
-        preferred_market = (request.form.get("preferred_market") or "NSE/BSE").strip()
-        timezone = (request.form.get("timezone") or "Asia/Kolkata").strip()
-        photo_base64 = (request.form.get("photo_base64") or "").strip()
+        session["name"] = request.form.get("display_name", session.get("name", ""))
+        session["currency"] = request.form.get("currency", "INR")
+        session["market"] = request.form.get("market", "NSE/BSE")
+        session["timezone"] = request.form.get("timezone", "Asia/Kolkata")
+        photo = request.form.get("photo_base64", "")
+        if photo and len(photo) > 100:
+            session["photo"] = photo
+        session.modified = True
+        return redirect("/profile")
 
-        if not display_name:
-            flash("Display name is required.", "error")
-            return redirect(url_for("profile_setup"))
-
-        meta = {
-            "display_name": display_name,
-            "currency": currency,
-            "preferred_market": preferred_market,
-            "timezone": timezone,
-        }
-
-        if photo_base64:
-            session["photo"] = photo_base64
-            meta["photo_base64"] = photo_base64
-
-        user_obj = _fetch_supabase_user(token)
-        existing_meta = (user_obj or {}).get("user_metadata") or {}
-        merged_meta = {**existing_meta, **meta}
-
-        patch = requests.patch(
-            _auth_url("/auth/v1/user"),
-            headers=_user_jwt_headers(token),
-            json={"data": merged_meta},
-            timeout=20,
-        )
-        if not patch.ok:
-            flash(_auth_error_message(patch), "error")
-            return redirect(url_for("profile_setup"))
-
-        session["name"] = display_name
-        session["currency"] = currency
-        session["market"] = preferred_market
-        session["timezone"] = timezone
-        flash("Profile saved.", "success")
-        return redirect(url_for("profile"))
-
-    user = _fetch_supabase_user(token)
-    if not user:
-        flash("Could not load your profile. Please sign in again.", "error")
-        session.clear()
-        return redirect(url_for("login"))
-    meta = user.get("user_metadata") or {}
-    default_name = (
-        meta.get("display_name")
-        or meta.get("full_name")
-        or session.get("name")
-        or ""
-    )
-    initials = _initials_from_name(default_name)
-    avatar_url = session.get("photo") or meta.get("photo_base64") or meta.get("avatar_url") or ""
-
+    name_val = session.get("name", "")
     return render_template(
         "profile_setup.html",
+        name=name_val,
+        currency=session.get("currency", "INR"),
+        market=session.get("market", "NSE/BSE"),
+        timezone=session.get("timezone", "Asia/Kolkata"),
+        photo=session.get("photo", ""),
         timezones=TIMEZONES,
         currencies=CURRENCIES,
         markets=MARKETS,
-        default_display_name=default_name,
-        default_currency=session.get("currency") or meta.get("currency") or "INR",
-        default_market=session.get("market") or meta.get("preferred_market") or "NSE/BSE",
-        default_timezone=session.get("timezone") or meta.get("timezone") or "Asia/Kolkata",
-        initials=initials,
-        avatar_url=avatar_url,
+        initials=_initials_from_name(name_val),
     )
 
 
@@ -1399,113 +1406,210 @@ def ai_analysis():
 @app.route("/api/analyse-portfolio", methods=["POST"])
 def analyse_portfolio():
     if not session.get("access_token"):
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"error": "Not logged in"}), 401
     token = session["access_token"]
     uid = session.get("user_id") or ""
-    rows = _fetch_portfolios_for_user(token, uid)
-    active_rows = [r for r in rows if (r.get("status") or "active") != "closed"]
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
 
-    if not active_rows:
-        return jsonify({"error": "No stocks in portfolio"})
+    groq_key = (os.getenv("GROQ_API_KEY") or "").strip()
+    if not groq_key:
+        return jsonify({"error": "GROQ_API_KEY not configured"}), 500
 
-    gemini_key = os.getenv("GEMINI_API_KEY", "")
-    if not gemini_key:
-        return jsonify({"error": "GEMINI_API_KEY not configured"}), 500
-
-    total_invested = 0.0
-    total_current = 0.0
-    portfolio_lines = []
-
-    for r in active_rows:
-        sym = (r.get("symbol") or "").strip().upper()
-        shares = float(r.get("shares") or 0)
-        buy_px = r.get("buy_price")
-        if buy_px is None:
-            buy_px = r.get("avg_price")
-        avg_price = float(buy_px or 0)
-        live_price = get_live_price(sym)
-
-        if live_price:
-            current_value = round(shares * live_price, 2)
-            invested_value = round(shares * avg_price, 2)
-            gain_pct = round(((live_price - avg_price) / avg_price) * 100, 2) if avg_price else 0.0
-            total_invested += invested_value
-            total_current += current_value
-            portfolio_lines.append(
-                f"- {sym}: {shares} shares, bought at {avg_price}, "
-                f"current price {live_price}, gain/loss {gain_pct}%, "
-                f"market: {r.get('market', 'NSE/BSE')}"
-            )
-        else:
-            portfolio_lines.append(
-                f"- {sym}: {shares} shares, bought at {avg_price}, "
-                f"current price unavailable, "
-                f"market: {r.get('market', 'NSE/BSE')}"
+    ai_text = ""
+    try:
+        rows = _fetch_portfolios_for_user(token, uid)
+        active_rows = [r for r in rows if (r.get("status") or "active") != "closed"]
+        if not active_rows:
+            return jsonify(
+                {"error": "No stocks found in portfolio. Please add stocks first."}
             )
 
-    total_gain_pct = round(((total_current - total_invested) / total_invested * 100), 2) if total_invested > 0 else 0.0
-    portfolio_text = "\n".join(portfolio_lines)
+        total_invested = 0.0
+        total_current = 0.0
+        portfolio_lines: List[str] = []
 
-    prompt = f"""You are an expert stock market analyst. Analyse this portfolio and respond ONLY in valid JSON, no extra text:
+        for stock in active_rows:
+            symbol = (stock.get("symbol") or "").strip().upper()
+            shares = float(stock.get("shares") or 0)
+            buy_px = stock.get("buy_price")
+            if buy_px is None:
+                buy_px = stock.get("avg_price")
+            avg_price = float(buy_px or 0)
+            live_price = get_live_price(symbol)
 
-Portfolio:
+            if live_price and live_price > 0:
+                current_value = round(shares * live_price, 2)
+                invested_value = round(shares * avg_price, 2)
+                gain_pct = (
+                    round(((live_price - avg_price) / avg_price) * 100, 2)
+                    if avg_price
+                    else 0.0
+                )
+                total_invested += invested_value
+                total_current += current_value
+                portfolio_lines.append(
+                    f"- {symbol}: {shares} shares, bought at {avg_price}, "
+                    f"current price {live_price}, gain/loss {gain_pct}%, "
+                    f"market: {stock.get('market', 'NSE/BSE')}"
+                )
+
+        if not portfolio_lines:
+            return jsonify(
+                {"error": "Could not fetch live prices for your stocks. Try again."}
+            )
+
+        total_gain_pct = (
+            round(((total_current - total_invested) / total_invested * 100), 2)
+            if total_invested > 0
+            else 0.0
+        )
+        portfolio_text = "\n".join(portfolio_lines)
+
+        prompt = f"""You are a world-class stock market analyst with 20 years experience in Indian and global markets. You have deep knowledge of current market news, sector trends, and stock movements.
+
+Portfolio data:
 {portfolio_text}
 
 Total invested: {total_invested}
 Total current value: {total_current}
 Overall gain/loss: {total_gain_pct}%
 
-Respond in exactly this JSON format:
+You MUST respond with ONLY valid JSON. No markdown, no backticks, no text outside JSON.
+
+Respond with exactly this JSON structure:
 {{
     "risk_level": "HIGH or MEDIUM or LOW",
     "diversification": "GOOD or FAIR or POOR",
     "overall_health": "GOOD or FAIR or POOR",
-    "summary": "one sentence summary of the portfolio",
+    "summary": "2 sentence expert summary of portfolio situation",
     "suggestions": [
-        "specific suggestion 1",
-        "specific suggestion 2",
-        "specific suggestion 3"
+        "Specific actionable suggestion 1 about current holdings",
+        "Specific actionable suggestion 2 about risk management",
+        "Specific actionable suggestion 3 about diversification"
     ],
-    "sector_analysis": "one sentence about sector concentration",
-    "best_performing": "symbol of best performing stock",
-    "worst_performing": "symbol of worst performing stock"
+    "hold_recommendations": [
+        {{
+            "symbol": "exact symbol from portfolio",
+            "action": "HOLD or SELL or ADD MORE",
+            "hold_until": "specific timeframe like 3-6 months or Q3 2026",
+            "target_price": "estimated target price",
+            "stop_loss": "recommended stop loss price",
+            "reasoning": "detailed reason based on technicals and fundamentals"
+        }}
+    ],
+    "news_based_opportunities": [
+        {{
+            "symbol": "stock symbol",
+            "news_catalyst": "specific news or event driving this stock",
+            "expected_impact": "POSITIVE or NEGATIVE",
+            "potential_gain": "estimated % gain possible",
+            "timeframe": "how long this opportunity lasts",
+            "reason": "detailed explanation of why this news matters"
+        }},
+        {{
+            "symbol": "another stock",
+            "news_catalyst": "specific news or event",
+            "expected_impact": "POSITIVE or NEGATIVE",
+            "potential_gain": "estimated % gain possible",
+            "timeframe": "timeframe",
+            "reason": "detailed explanation"
+        }},
+        {{
+            "symbol": "another stock",
+            "news_catalyst": "specific news or event",
+            "expected_impact": "POSITIVE or NEGATIVE",
+            "potential_gain": "estimated % gain possible",
+            "timeframe": "timeframe",
+            "reason": "detailed explanation"
+        }}
+    ],
+    "stocks_to_watch": [
+        {{
+            "symbol": "HDFCBANK.NS",
+            "reason": "Why this stock is worth watching now"
+        }},
+        {{
+            "symbol": "INFY.NS",
+            "reason": "Why this stock is worth watching now"
+        }},
+        {{
+            "symbol": "BTC-USD",
+            "reason": "Why this asset is worth watching now"
+        }}
+    ],
+    "sectors_to_explore": [
+        {{
+            "sector": "Banking and Finance",
+            "reason": "Why this sector looks good now"
+        }},
+        {{
+            "sector": "Technology",
+            "reason": "Why this sector looks good now"
+        }},
+        {{
+            "sector": "Pharma",
+            "reason": "Why this sector looks good now"
+        }}
+    ],
+    "market_outlook": "2 sentence view on Indian market and global markets right now",
+    "best_performing": "symbol of best stock in portfolio",
+    "worst_performing": "symbol of worst stock in portfolio",
+    "immediate_action": "One most important thing the investor should do right now"
 }}"""
 
-    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+        groq_response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {groq_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+                "max_tokens": 4096,
+            },
+            timeout=30,
+        )
+        groq_data = groq_response.json()
+        print("Groq response:", groq_data)
 
-    gemini_payload = {
-        "contents": [{
-            "parts": [{"text": prompt}]
-        }],
-        "generationConfig": {
-            "temperature": 0.3,
-            "maxOutputTokens": 1000
-        }
-    }
+        if not groq_response.ok:
+            err = groq_data.get("error", {}) if isinstance(groq_data, dict) else {}
+            msg = (
+                err.get("message", groq_response.text)
+                if isinstance(err, dict)
+                else str(groq_data)
+            )
+            return jsonify({"error": f"Groq API error: {msg}"}), 502
 
-    try:
-        gemini_response = requests.post(gemini_url, json=gemini_payload, timeout=30)
-        gemini_data = gemini_response.json()
-    except Exception as e:
-        return jsonify({"error": f"Gemini API error: {str(e)}"}), 502
+        choices = groq_data.get("choices") or []
+        if not choices:
+            return jsonify({"error": "No analysis returned", "raw": groq_data}), 502
+        assistant_message = choices[0].get("message") or {}
+        ai_text = (assistant_message.get("content") or "").strip()
+        if not ai_text:
+            return jsonify({"error": "Empty Groq content", "raw": groq_data}), 502
 
-    try:
-        ai_text = gemini_data["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError):
-        return jsonify({"error": "Invalid Gemini response", "raw": gemini_data}), 502
+        if "```" in ai_text:
+            chunks = ai_text.split("```")
+            ai_text = chunks[1] if len(chunks) > 1 else ai_text
+            ai_text = ai_text.strip()
+            if ai_text.lower().startswith("json"):
+                ai_text = ai_text[4:].strip()
 
-    ai_text = ai_text.strip()
-    if ai_text.startswith("```"):
-        ai_text = ai_text.split("```")[1]
-        if ai_text.startswith("json"):
-            ai_text = ai_text[4:]
+        result = json.loads(ai_text)
+        return jsonify(result)
 
-    try:
-        ai_result = json.loads(ai_text.strip())
     except json.JSONDecodeError as e:
-        return jsonify({"error": f"JSON parse error: {str(e)}", "raw": ai_text}), 502
-
-    return jsonify(ai_result)
+        print(f"AI analysis JSON error: {e}")
+        return jsonify(
+            {"error": f"Analysis failed: {str(e)}", "raw": ai_text}
+        ), 502
+    except Exception as e:
+        print(f"AI analysis error: {e}")
+        return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
 
 
 @app.route("/profile")
@@ -1552,6 +1656,39 @@ def profile():
         market=market,
         member_since=member_since,
     )
+
+
+@oauth_authorized.connect_via(google_bp)
+def google_logged_in(blueprint, token):
+    if not token:
+        flash("Google sign-in was not completed.", "error")
+        return redirect(url_for("login"))
+
+    resp = blueprint.session.get("/oauth2/v2/userinfo")
+    if not resp.ok:
+        flash("Could not fetch Google profile.", "error")
+        return redirect(url_for("login"))
+
+    user_info = resp.json()
+    email = user_info.get("email", "")
+    name = user_info.get("name", "")
+    google_id = user_info.get("id", "")
+    picture = user_info.get("picture", "")
+
+    if not name and email and "@" in email:
+        name = email.split("@")[0]
+    if not name:
+        name = "Investor"
+
+    session["email"] = email
+    session["name"] = name
+    session["user_id"] = f"google_{google_id}" if google_id else email
+    session["access_token"] = f"google_oauth_{google_id}"
+    if picture:
+        session["photo"] = picture
+
+    session.pop("_flashes", None)
+    return redirect(url_for("dashboard"))
 
 
 @app.route("/logout")

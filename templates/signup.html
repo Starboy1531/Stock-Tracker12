@@ -22,7 +22,7 @@
             margin: 0;
             min-height: 100vh;
             font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-            background: var(--bg);
+            background: linear-gradient(135deg, #0d1117 0%, #161b2e 50%, #0d1117 100%);
             color: var(--text);
             display: flex;
             align-items: center;
@@ -44,8 +44,8 @@
             position: relative;
             width: 100%;
             max-width: 400px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
+            background: #161b2e;
+            border: 1px solid #2e3250;
             border-radius: 16px;
             padding: 2rem 2rem 1.75rem;
             box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
@@ -81,25 +81,24 @@
             margin-bottom: 1rem;
         }
 
-        input[type="text"],
-        input[type="email"],
-        input[type="password"] {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            font-size: 0.9375rem;
-            color: var(--text);
-            background: var(--input-bg);
-            border: 1px solid var(--border);
+        .field-input {
+            background: #1e2130;
+            border: 1px solid #2e3250;
             border-radius: 10px;
+            color: white;
+            padding: 14px;
+            font-size: 14px;
+            width: 100%;
             outline: none;
+            box-sizing: border-box;
             transition: border-color 0.15s, box-shadow 0.15s;
         }
 
-        input::placeholder { color: #71717a; }
+        .field-input::placeholder {
+            color: #71717a;
+        }
 
-        input[type="text"]:focus,
-        input[type="email"]:focus,
-        input[type="password"]:focus {
+        .field-input:focus {
             border-color: rgba(59, 130, 246, 0.5);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
         }
@@ -194,6 +193,22 @@
             color: #86efac;
             border: 1px solid rgba(34, 197, 94, 0.25);
         }
+
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #1e2130 inset !important;
+            -webkit-text-fill-color: white !important;
+            caret-color: white !important;
+        }
+
+        input:focus {
+            background: #1e2130 !important;
+            border-color: #4a90e2 !important;
+            color: white !important;
+            outline: none !important;
+        }
     </style>
 </head>
 <body>
@@ -215,15 +230,23 @@
         <form action="{{ url_for('signup') }}" method="post" autocomplete="on">
             <div class="field">
                 <label for="full_name">Full Name</label>
-                <input type="text" id="full_name" name="full_name" placeholder="Jane Doe" required>
+                <input type="text" id="full_name" name="full_name" class="field-input" placeholder="Jane Doe" required>
             </div>
             <div class="field">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                <input type="email" id="email" name="email" class="field-input" placeholder="you@example.com" required>
             </div>
             <div class="field">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="••••••••" required minlength="8">
+                <div style="position:relative;">
+                    <input type="password" id="password" name="password" class="field-input" placeholder="Enter password" required minlength="8">
+                    <span onclick="togglePassword('password', this)" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); cursor:pointer; color:#888; user-select:none; background:transparent; border:none; padding:0; display:flex; align-items:center;">
+                        <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </span>
+                </div>
             </div>
             <button type="submit" class="btn btn-primary">Create account</button>
         </form>
@@ -239,5 +262,24 @@
         </a>
         <p class="footer">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
     </div>
+    <script>
+        function togglePassword(inputId, span) {
+            const input = document.getElementById(inputId);
+            const svg = span.querySelector('svg');
+            if (input.type === 'password') {
+                input.type = 'text';
+                svg.innerHTML = `
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                `;
+            } else {
+                input.type = 'password';
+                svg.innerHTML = `
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                `;
+            }
+        }
+    </script>
 </body>
 </html>
