@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Analysis — Stock Tracker</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --card: #2a2a4a;
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #ffffff;
+            --muted: #a8a8c0;
+            --accent: #4a90e2;
+            --green: #00c853;
+            --yellow: #facc15;
+            --red: #ff1744;
+            --nav-on: #3b82f6;
+            --nav-off: #6b6b8a;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+            background: #1a1a2e;
+            color: var(--text);
+            padding: 0 1rem 6.5rem;
+            line-height: 1.45;
+        }
+
+        .wrap {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        header.page-head {
+            display: grid;
+            grid-template-columns: 44px 1fr 44px;
+            align-items: center;
+            padding: 0.75rem 0 1rem;
+        }
+
+        .back {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            margin-left: -0.5rem;
+            color: var(--text);
+            border-radius: 10px;
+            text-decoration: none;
+        }
+        .back:hover { background: rgba(255, 255, 255, 0.06); }
+        .back svg { width: 22px; height: 22px; }
+
+        .page-head h1 {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 600;
+            text-align: center;
+            letter-spacing: -0.02em;
+        }
+
+        .metric-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+        }
+
+        .metric-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.85rem 0.5rem;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .metric-card.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .metric-label {
+            font-size: 0.68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+            margin-bottom: 0.4rem;
+        }
+        .metric-badge {
+            display: inline-block;
+            padding: 0.3rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .badge-green { background: var(--green); }
+        .badge-yellow { background: var(--yellow); color: #1a1a2e; }
+        .badge-red { background: var(--red); }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .card.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .card-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+            margin: 0 0 0.6rem;
+        }
+        .card-body {
+            font-size: 0.9rem;
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .breakdown-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.6rem;
+        }
+        .breakdown-row:last-child { margin-bottom: 0; }
+        .breakdown-label {
+            width: 60px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .breakdown-bar-wrap {
+            flex: 1;
+            height: 10px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .breakdown-bar {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.6s ease;
+        }
+        .breakdown-pct {
+            width: 42px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-align: right;
+        }
+
+        .highlight-green {
+            color: var(--green);
+            font-weight: 700;
+        }
+        .highlight-red {
+            color: var(--red);
+            font-weight: 700;
+        }
+
+        .suggestion-card {
+            background: var(--card);
+            border-left: 4px solid var(--accent);
+            border-radius: 0 12px 12px 0;
+            padding: 0.85rem 1rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text);
+            line-height: 1.5;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .suggestion-card.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .suggestion-card:last-child { margin-bottom: 0; }
+
+        .btn-analyse {
+            display: block;
+            width: 100%;
+            padding: 1rem 1.25rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            background: var(--accent);
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: background 0.15s, transform 0.08s;
+            margin-bottom: 1rem;
+        }
+        .btn-analyse:hover { background: #357abd; }
+        .btn-analyse:active { transform: scale(0.99); }
+        .btn-analyse:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .spinner-wrap {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1.5rem;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+        .spinner-wrap.show { display: flex; }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .err {
+            font-size: 0.8125rem;
+            color: var(--red);
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        nav.bottom {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #16162a;
+            border-top: 1px solid var(--border);
+            padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0));
+            z-index: 50;
+        }
+        nav.bottom .inner {
+            max-width: 480px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        nav.bottom a {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.2rem;
+            text-decoration: none;
+            color: var(--nav-off);
+            font-size: 0.625rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 0.35rem 0.75rem;
+            border-radius: 10px;
+            min-width: 4rem;
+        }
+        nav.bottom a svg { width: 22px; height: 22px; }
+        nav.bottom a.on { color: var(--nav-on); }
+        nav.bottom a.on svg:not(.i-home) { stroke: var(--nav-on); fill: none; }
+        nav.bottom a:not(.on) svg { stroke: var(--nav-off); fill: none; }
+        nav.bottom a.on .i-home { fill: var(--nav-on); stroke: none; }
+        nav.bottom a:not(.on) .i-home { fill: none; stroke: var(--nav-off); }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header class="page-head">
+            <a href="{{ url_for('dashboard') }}" class="back" aria-label="Back to dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </a>
+            <h1>Portfolio Analysis</h1>
+            <span></span>
+        </header>
+
+        {% if has_stocks %}
+        <div class="metric-cards" id="metric-cards">
+            <div class="metric-card" id="risk-card">
+                <div class="metric-label">Risk</div>
+                <span class="metric-badge" id="risk-badge">—</span>
+            </div>
+            <div class="metric-card" id="div-card">
+                <div class="metric-label">Diversification</div>
+                <span class="metric-badge" id="div-badge">—</span>
+            </div>
+            <div class="metric-card" id="health-card">
+                <div class="metric-label">Health</div>
+                <span class="metric-badge" id="health-badge">—</span>
+            </div>
+        </div>
+
+        <div class="card" id="summary-card">
+            <div class="card-title">Summary</div>
+            <div class="card-body" id="summary-text">—</div>
+        </div>
+
+        <div class="card" id="breakdown-card">
+            <div class="card-title">Portfolio Breakdown</div>
+            <div id="breakdown-body">
+                {% for s in stocks %}
+                <div class="breakdown-row">
+                    <div class="breakdown-label" title="{{ s.symbol }}">{{ s.symbol }}</div>
+                    <div class="breakdown-bar-wrap">
+                        <div class="breakdown-bar" style="width: {{ s.portfolio_pct }}%; background: hsl({{ loop.index0 * 45 + 200 }}, 70%, 55%);"></div>
+                    </div>
+                    <div class="breakdown-pct">{{ s.portfolio_pct }}%</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card" id="performance-card">
+            <div class="card-title">Performance</div>
+            <div class="card-body">
+                <div>Best: <span class="highlight-green" id="best-stock">—</span></div>
+                <div style="margin-top: 0.3rem;">Worst: <span class="highlight-red" id="worst-stock">—</span></div>
+            </div>
+        </div>
+
+        <div class="card" id="sector-card">
+            <div class="card-title">Sector Analysis</div>
+            <div class="card-body" id="sector-text">—</div>
+        </div>
+
+        <div id="suggestions-section" style="margin-bottom: 1rem;">
+            <div class="card-title" style="padding: 0 0 0.6rem;">AI Suggestions</div>
+            <div id="suggestions-body"></div>
+        </div>
+
+        <div class="spinner-wrap" id="spinner">
+            <div class="spinner"></div>
+            <span>Gemini AI is analysing your portfolio...</span>
+        </div>
+        <p class="err" id="err-msg"></p>
+
+        <button type="button" class="btn-analyse" id="btn-analyse">Analyse my portfolio</button>
+        {% else %}
+        <div class="empty">No active stocks in your portfolio. Add some stocks to get AI analysis.</div>
+        {% endif %}
+    </div>
+
+    <nav class="bottom" aria-label="Main navigation">
+        <div class="inner">
+            <a href="{{ url_for('dashboard') }}">
+                <svg class="i-home" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Home
+            </a>
+            <a href="{{ url_for('portfolio') }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2"/>
+                    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+                    <path d="M12 12v4"/>
+                </svg>
+                Portfolio
+            </a>
+            <a href="{{ url_for('charts') }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3v18h18"/>
+                    <path d="M7 12l4-4 4 4 5-6"/>
+                </svg>
+                Charts
+            </a>
+            <a href="{{ url_for('profile') }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="8" r="4"/>
+                    <path d="M4 20v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"/>
+                </svg>
+                Profile
+            </a>
+        </div>
+    </nav>
+
+    {% if has_stocks %}
+    <script>
+        (function () {
+            var btn = document.getElementById("btn-analyse");
+            var spinner = document.getElementById("spinner");
+            var errMsg = document.getElementById("err-msg");
+
+            function badgeClass(val) {
+                var v = (val || "").toUpperCase();
+                if (v === "HIGH" || v === "POOR") return "badge-red";
+                if (v === "MEDIUM" || v === "FAIR") return "badge-yellow";
+                if (v === "LOW" || v === "GOOD") return "badge-green";
+                return "badge-yellow";
+            }
+
+            function showCards() {
+                document.querySelectorAll(".metric-card, .card, .suggestion-card").forEach(function (el, i) {
+                    setTimeout(function () {
+                        el.classList.add("show");
+                    }, i * 80);
+                });
+            }
+
+            btn.addEventListener("click", async function () {
+                btn.disabled = true;
+                spinner.classList.add("show");
+                errMsg.textContent = "";
+
+                try {
+                    var res = await fetch("/api/analyse-portfolio", {
+                        method: "POST",
+                        credentials: "same-origin"
+                    });
+                    var data = await res.json();
+
+                    spinner.classList.remove("show");
+                    btn.disabled = false;
+
+                    if (!res.ok || data.error) {
+                        errMsg.textContent = data.error || "Analysis failed";
+                        return;
+                    }
+
+                    var riskBadge = document.getElementById("risk-badge");
+                    var divBadge = document.getElementById("div-badge");
+                    var healthBadge = document.getElementById("health-badge");
+
+                    riskBadge.textContent = data.risk_level || "—";
+                    riskBadge.className = "metric-badge " + badgeClass(data.risk_level);
+                    divBadge.textContent = data.diversification || "—";
+                    divBadge.className = "metric-badge " + badgeClass(data.diversification);
+                    healthBadge.textContent = data.overall_health || "—";
+                    healthBadge.className = "metric-badge " + badgeClass(data.overall_health);
+
+                    document.getElementById("summary-text").textContent = data.summary || "—";
+                    document.getElementById("best-stock").textContent = data.best_performing || "—";
+                    document.getElementById("worst-stock").textContent = data.worst_performing || "—";
+                    document.getElementById("sector-text").textContent = data.sector_analysis || "—";
+
+                    var sugBody = document.getElementById("suggestions-body");
+                    sugBody.innerHTML = "";
+                    var suggestions = data.suggestions || [];
+                    suggestions.forEach(function (s, i) {
+                        var div = document.createElement("div");
+                        div.className = "suggestion-card";
+                        div.textContent = s;
+                        sugBody.appendChild(div);
+                        setTimeout(function () { div.classList.add("show"); }, i * 100);
+                    });
+
+                    showCards();
+                } catch (e) {
+                    spinner.classList.remove("show");
+                    btn.disabled = false;
+                    errMsg.textContent = e.message || "Network error";
+                }
+            });
+        })();
+    </script>
+    {% endif %}
+</body>
+</html>

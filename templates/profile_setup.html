@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile setup — Stock Tracker</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --bg-card: #16213e;
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #ffffff;
+            --muted: #a8a8c0;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --input-bg: rgba(0, 0, 0, 0.25);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .glow {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.15), transparent),
+                radial-gradient(ellipse 60% 40% at 100% 60%, rgba(139, 92, 246, 0.08), transparent);
+        }
+
+        .page {
+            position: relative;
+            z-index: 1;
+            max-width: 440px;
+            margin: 0 auto;
+        }
+
+        header.page-head {
+            display: grid;
+            grid-template-columns: 44px 1fr 44px;
+            align-items: center;
+            padding: 0.75rem 0 1.25rem;
+        }
+
+        .back {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            margin-left: -0.5rem;
+            color: var(--text);
+            border-radius: 10px;
+            text-decoration: none;
+        }
+        .back:hover { background: rgba(255, 255, 255, 0.06); }
+        .back svg { width: 22px; height: 22px; }
+
+        .page-head h1 {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 600;
+            text-align: center;
+            letter-spacing: -0.02em;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+        }
+
+        .flash {
+            list-style: none;
+            margin: 0 0 1rem;
+            padding: 0;
+        }
+
+        .flash li {
+            padding: 0.65rem 0.85rem;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .flash li.error {
+            background: rgba(248, 113, 113, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(248, 113, 113, 0.3);
+        }
+
+        .flash li.success {
+            background: rgba(34, 197, 94, 0.12);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.25);
+        }
+
+        .avatar-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .avatar {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #3b82f6, #6366f1);
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .avatar-initials {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.02em;
+            user-select: none;
+        }
+
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .avatar-img.is-visible {
+            display: block;
+        }
+
+        .avatar-img.is-visible + .avatar-initials {
+            display: none;
+        }
+
+        .btn-upload {
+            margin-top: 0.75rem;
+            padding: 0.45rem 1rem;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text);
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .btn-upload:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+
+        input[type="file"] {
+            position: absolute;
+            width: 0;
+            height: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--muted);
+            margin-bottom: 0.4rem;
+        }
+
+        .field {
+            margin-bottom: 1rem;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 0.9375rem;
+            color: var(--text);
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            font-size: 0.9375rem;
+            color: white;
+            background-color: #2a2a4a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23ffffff' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 2.5rem;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        select option {
+            background-color: #2a2a4a;
+            color: white;
+        }
+
+        input[type="text"]::placeholder {
+            color: #71717a;
+        }
+
+        input[type="text"]:focus {
+            border-color: rgba(59, 130, 246, 0.55);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        select:focus {
+            border-color: rgba(59, 130, 246, 0.55);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn-submit {
+            display: block;
+            width: 100%;
+            padding: 0.85rem 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #fff;
+            background: var(--accent);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+
+        .btn-submit:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-submit:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <div class="glow" aria-hidden="true"></div>
+    <div class="page">
+        <header class="page-head">
+            <a href="{{ url_for('dashboard') }}" class="back" aria-label="Back to dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </a>
+            <h1>Set up your profile</h1>
+            <span></span>
+        </header>
+        <div class="card">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <ul class="flash">
+                {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% endwith %}
+
+            <form
+                action="{{ url_for('profile_setup') }}"
+                method="post"
+                id="profile-form"
+            >
+                <div class="avatar-block" style="text-align:center; margin-bottom:1.5rem;">
+                    <input type="file" id="photoInput" name="photo" accept="image/*" style="display:none">
+                    <input type="hidden" id="photoBase64" name="photo_base64">
+
+                    <div id="avatarContainer" onclick="document.getElementById('photoInput').click()" style="cursor:pointer; display:inline-block;">
+                        <img id="avatarImg" src="{% if avatar_url %}{{ avatar_url }}{% endif %}" style="{% if avatar_url %}display:block;{% else %}display:none;{% endif %} width:100px; height:100px; border-radius:50%; object-fit:cover;">
+                        <div id="avatarInitials" style="{% if avatar_url %}display:none;{% else %}display:flex;{% endif %} width:100px; height:100px; border-radius:50%; background:#4a90e2; align-items:center; justify-content:center; font-size:32px; color:white; font-weight:500;">
+                            {{ session.get('name', initials|default('U', true))[:2].upper() }}
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="document.getElementById('photoInput').click()" style="margin-top:10px; background:#2a2a4a; color:white; border:1px solid #444466; border-radius:8px; padding:8px 16px; cursor:pointer; font-weight:600; font-size:0.8125rem;">
+                        Upload photo
+                    </button>
+                </div>
+
+                <div class="field">
+                    <label for="display_name">Display name</label>
+                    <input
+                        type="text"
+                        id="display_name"
+                        name="display_name"
+                        value="{{ default_display_name }}"
+                        placeholder="How we should greet you"
+                        required
+                        autocomplete="name"
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="currency">Currency</label>
+                    <select id="currency" name="currency" required>
+                        {% for code, label in currencies %}
+                        <option value="{{ code }}"{% if code == default_currency %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="preferred_market">Preferred market</label>
+                    <select id="preferred_market" name="preferred_market" required>
+                        {% for code, label in markets %}
+                        <option value="{{ code }}"{% if code == default_market %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="timezone">Timezone</label>
+                    <select id="timezone" name="timezone" required>
+                        {% for tz, label in timezones %}
+                        <option value="{{ tz }}"{% if tz == default_timezone %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-submit">Save and continue</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 2 * 1024 * 1024) {
+                alert('Photo must be under 2MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64 = e.target.result;
+                const avatarImg = document.getElementById('avatarImg');
+                const avatarInitials = document.getElementById('avatarInitials');
+
+                avatarImg.src = base64;
+                avatarImg.style.display = 'block';
+                avatarInitials.style.display = 'none';
+                document.getElementById('photoBase64').value = base64;
+            };
+            reader.readAsDataURL(file);
+        });
+    </script>
+</body>
+</html>

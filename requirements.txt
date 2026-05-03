@@ -1,0 +1,6 @@
+flask
+supabase
+yfinance
+python-dotenv
+requests
+psycopg2-binary

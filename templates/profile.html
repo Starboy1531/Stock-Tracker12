@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My profile — Stock Tracker</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --card: #2a2a4a;
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #ffffff;
+            --muted: #a8a8c0;
+            --accent: #4a90e2;
+            --accent-hover: #357abd;
+            --red: #ff1744;
+            --nav-on: #3b82f6;
+            --nav-off: #6b6b8a;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+            background: #1a1a2e;
+            color: var(--text);
+            padding: 0 1rem 6.5rem;
+            line-height: 1.45;
+        }
+
+        .wrap {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        header.page-head {
+            display: grid;
+            grid-template-columns: 44px 1fr 44px;
+            align-items: center;
+            padding: 0.75rem 0 1.25rem;
+        }
+
+        .back {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            margin-left: -0.5rem;
+            color: var(--text);
+            border-radius: 10px;
+            text-decoration: none;
+        }
+        .back:hover { background: rgba(255, 255, 255, 0.06); }
+        .back svg { width: 22px; height: 22px; }
+
+        .page-head h1 {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 600;
+            text-align: center;
+            letter-spacing: -0.02em;
+        }
+
+        .profile-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .avatar {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #3b82f6, #6366f1);
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+            margin: 0 auto 0.75rem;
+        }
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .avatar-img.is-visible {
+            display: block;
+        }
+        .avatar-initials {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.02em;
+            user-select: none;
+        }
+        .avatar-img.is-visible + .avatar-initials {
+            display: none;
+        }
+
+        .profile-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0 0 0.2rem;
+        }
+        .profile-email {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin: 0 0 0.75rem;
+        }
+        .btn-change-photo {
+            padding: 0.45rem 1rem;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-change-photo:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+
+        .info-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .info-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .info-row:first-child {
+            padding-top: 0;
+        }
+        .info-label {
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-weight: 500;
+        }
+        .info-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 0.85rem 1rem;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: background 0.15s, transform 0.08s;
+            margin-bottom: 0.75rem;
+        }
+        .btn-primary {
+            color: #fff;
+            background: var(--accent);
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-danger {
+            color: #fff;
+            background: var(--red);
+        }
+        .btn-danger:hover { background: #d9163a; }
+        .btn-danger:active { transform: scale(0.98); }
+
+        nav.bottom {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #16162a;
+            border-top: 1px solid var(--border);
+            padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0));
+            z-index: 50;
+        }
+        nav.bottom .inner {
+            max-width: 480px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        nav.bottom a {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.2rem;
+            text-decoration: none;
+            color: var(--nav-off);
+            font-size: 0.625rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 0.35rem 0.75rem;
+            border-radius: 10px;
+            min-width: 4rem;
+        }
+        nav.bottom a svg { width: 22px; height: 22px; }
+        nav.bottom a.on { color: var(--nav-on); }
+        nav.bottom a.on svg:not(.i-home) { stroke: var(--nav-on); fill: none; }
+        nav.bottom a:not(.on) svg { stroke: var(--nav-off); fill: none; }
+        nav.bottom a.on .i-home { fill: var(--nav-on); stroke: none; }
+        nav.bottom a:not(.on) .i-home { fill: none; stroke: var(--nav-off); }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header class="page-head">
+            <a href="{{ url_for('dashboard') }}" class="back" aria-label="Back to dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </a>
+            <h1>My profile</h1>
+            <span></span>
+        </header>
+
+        <div class="profile-card">
+            <div style="margin-bottom:0.75rem;">
+                {% if session.get('photo') %}
+                <img src="{{ session.get('photo') }}" style="width:100px; height:100px; border-radius:50%; object-fit:cover;">
+                {% else %}
+                <div style="width:100px; height:100px; border-radius:50%; background:#4a90e2; display:flex; align-items:center; justify-content:center; font-size:32px; color:white; font-weight:500; margin:0 auto;">
+                    {{ session.get('name', initials|default('U', true))[:2].upper() }}
+                </div>
+                {% endif %}
+            </div>
+            <div class="profile-name">{{ name }}</div>
+            <div class="profile-email">{{ email }}</div>
+            <a href="{{ url_for('profile_setup') }}" class="btn-change-photo">Change photo</a>
+        </div>
+
+        <div class="info-card">
+            <div class="info-row">
+                <span class="info-label">Name</span>
+                <span class="info-value">{{ name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Email</span>
+                <span class="info-value">{{ email }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Currency</span>
+                <span class="info-value">{{ currency }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Market</span>
+                <span class="info-value">{{ market }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Member since</span>
+                <span class="info-value">{{ member_since or 'N/A' }}</span>
+            </div>
+        </div>
+
+        <a href="{{ url_for('profile_setup') }}" class="btn btn-primary">Edit profile</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-danger">Sign out</a>
+    </div>
+
+    <nav class="bottom" aria-label="Main navigation">
+        <div class="inner">
+            <a href="{{ url_for('dashboard') }}">
+                <svg class="i-home" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Home
+            </a>
+            <a href="{{ url_for('portfolio') }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2"/>
+                    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+                    <path d="M12 12v4"/>
+                </svg>
+                Portfolio
+            </a>
+            <a href="{{ url_for('charts') }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3v18h18"/>
+                    <path d="M7 12l4-4 4 4 5-6"/>
+                </svg>
+                Charts
+            </a>
+            <a href="{{ url_for('profile') }}" class="on" aria-current="page">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="8" r="4"/>
+                    <path d="M4 20v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"/>
+                </svg>
+                Profile
+            </a>
+        </div>
+    </nav>
+</body>
+</html>
