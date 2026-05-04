@@ -162,6 +162,8 @@ def _quote_price_fast_preferred(symbol: str) -> Optional[float]:
 
 
 app = Flask(__name__)
+from werkzeug.middleware.proxy_fix import ProxyFix
+   app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 from werkzeug.middleware.proxy_fix import ProxyFix
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
