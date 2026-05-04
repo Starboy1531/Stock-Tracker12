@@ -162,6 +162,10 @@ def _quote_price_fast_preferred(symbol: str) -> Optional[float]:
 
 
 app = Flask(__name__)
+
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SECRET_KEY"] = "stocktracker2026secretkey"
 app.config["SESSION_FILE_DIR"] = os.path.join(tempfile.gettempdir(), "stock_tracker_sessions")
